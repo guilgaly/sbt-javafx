@@ -48,9 +48,9 @@ case class Signing(keyStore: Option[File], storePass: Option[String], alias: Opt
 
 case class Dimensions(width: Int, height: Int, embeddedWidth: String, embeddedHeight: String)
 
-case class Misc(platform: Platform, cssToBin: Boolean, verbose: Boolean)
+case class Misc(platform: Platform, cssToBin: Boolean, verbose: Boolean, licenseFile: Option[File])
 
-case class Info(vendor: String, title: String, appVersion: String, category: String, copyright: String, description: String, license: String)
+case class Info(vendor: String, title: String, appVersion: String, category: String, copyright: String, description: String, license: String, appName:String)
 
 case class Platform(javafx: Option[String], j2se: Option[String], jvmargs: Seq[String], jvmuserargs: Seq[(String, String)], properties: Seq[(String, String)])
 
@@ -137,6 +137,9 @@ object JavaFXPlugin extends Plugin {
     val jvmuserargs = SettingKey[Seq[(String, String)]](prefixed("jvmuserargs"), "User overridable JVM options.")
     val properties = SettingKey[Seq[(String, String)]](prefixed("properties"), "Required JVM properties.")
 
+    val licenseFile = SettingKey[Option[File]](prefixed("license-file"), "License file to use for click-through license")
+    val appName = SettingKey[String](prefixed("app-name"), "Application short name")
+
     val packageJavaFx = TaskKey[Unit]("package-javafx", "Packages a JavaFX application.")
 
     //	Some convenience methods
@@ -211,7 +214,7 @@ object JavaFXPlugin extends Plugin {
                 </fx:csstobin>
               }
             }
-            <fx:application id={ name } name={ name } version={ appVersion } mainClass={ jfx.mainClass getOrElse sys.error("JFX.mainClass not defined") }/>
+            <fx:application id={ name } name={ jfx.info.appName } version={ appVersion } mainClass={ jfx.mainClass getOrElse sys.error("JFX.mainClass not defined") }/>
             <fx:platform id="platform" javafx={ jfx.misc.platform.javafx getOrElse "" } j2se={ jfx.misc.platform.j2se getOrElse "" }>
               {
                 jfx.misc.platform.jvmargs map { value =>
@@ -265,6 +268,7 @@ object JavaFXPlugin extends Plugin {
               <fx:resources>
                 <fx:fileset dir={ distDir.getAbsolutePath } includes={ jfx.output.artifactBaseNameValue + ".jar" }/>
                 { if (libJars.nonEmpty) <fx:fileset dir={ crossTarget.getAbsolutePath } includes="lib/*.jar"/> }
+                { if (jfx.misc.licenseFile.isDefined) <fx:fileset type="license" dir={ jfx.misc.licenseFile.get.getParentFile.getAbsolutePath } includes={ jfx.misc.licenseFile.get.getName }/> }
               </fx:resources>
               <fx:permissions elevated={ jfx.permissions.elevated.toString } cacheCertificates={ jfx.permissions.cacheCertificates.toString }/>
               {
@@ -330,7 +334,7 @@ object JavaFXPlugin extends Plugin {
     JFX.description := "",
     JFX.copyright := "",
     JFX.license := "",
-    JFX.info <<= (JFX.vendor, JFX.title, JFX.appVersion, JFX.category, JFX.copyright, JFX.description, JFX.license) apply Info.apply,
+    JFX.info <<= (JFX.vendor, JFX.title, JFX.appVersion, JFX.category, JFX.copyright, JFX.description, JFX.license, JFX.appName) apply Info.apply,
     JFX.keyStore := None,
     JFX.storePass := None,
     JFX.alias := None,
@@ -345,7 +349,9 @@ object JavaFXPlugin extends Plugin {
     JFX.platform <<= (JFX.javafx, JFX.j2se, JFX.jvmargs, JFX.jvmuserargs, JFX.properties) apply Platform.apply,    
     JFX.cssToBin := false,
     JFX.verbose := false,
-    JFX.misc <<= (JFX.platform, JFX.cssToBin, JFX.verbose) apply Misc.apply)
+    JFX.licenseFile := None,
+    JFX.appName <<= name,
+    JFX.misc <<= (JFX.platform, JFX.cssToBin, JFX.verbose, JFX.licenseFile) apply Misc.apply)
 
   //	Settings that must be manually loaded
 
